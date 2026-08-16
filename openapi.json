@@ -88,6 +88,10 @@
                       "nullable": true,
                       "description": "Currently selected line name, or null for default"
                     },
+                    "reverseStart": {
+                      "type": "boolean",
+                      "description": "Whether reverse-start (OCS) mode is active"
+                    },
                     "lines": {
                       "type": "array",
                       "items": {
@@ -140,6 +144,38 @@
           },
           "400": {
             "description": "Invalid line name (not found)"
+          }
+        }
+      }
+    },
+
+    "/signalk/v1/api/vessels/self/navigation/racing/setReverseStart": {
+      "put": {
+        "summary": "Enable or disable reverse-start (OCS) mode",
+        "description": "When enabled, the start is calculated the 'wrong way' by swapping the OCS/course and pre-start sides of the line. Affects the sign of distanceStartline and whether timeToBurn is calculated.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reverse": {
+                    "type": "boolean",
+                    "description": "true to calculate the start in reverse, false for normal"
+                  }
+                },
+                "required": ["reverse"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reverse-start mode updated"
+          },
+          "400": {
+            "description": "Invalid request (reverse must be a boolean)"
           }
         }
       }

@@ -189,6 +189,15 @@ module.exports = (app) => {
                             "displayName": "Time to burn",
                             "shortName": "TTB"
                         }
+                    },
+                    {
+                        "path": "navigation.racing.reverseStart",
+                        "value": {
+                            "type": "boolean",
+                            "description": "When true, the start is calculated in reverse (the OCS/course side is swapped)",
+                            "displayName": "Reverse start (OCS)",
+                            "shortName": "Rev"
+                        }
                     }
                 ]
             }
@@ -279,6 +288,7 @@ module.exports = (app) => {
 
         const payload = {
             startLineName: state.startLineName ?? null,
+            reverseStart: state.reverseStart === true,
             lines: lines.map(l => ({
                 startLineName: l.startLineName,
                 startLineDescription: l.startLineDescription || null
@@ -446,6 +456,24 @@ module.exports = (app) => {
             return complete(callback, 200, 'Put start line name: OK');
         } catch (err) {
             return complete(callback, 500, 'Put start line name: Failed ' + err);
+        }
+    }
+
+    async function setReverseStart(context, path, args, callback) {
+        try {
+            app.debug('setReverseStart:', JSON.stringify(args));
+            if (!args || typeof args.reverse !== 'boolean') {
+                return complete(callback, 400, 'Failed to set reverseStart: reverse must be a boolean');
+            }
+            if (state.reverseStart !== args.reverse) {
+                state.reverseStart = args.reverse;
+                sendDeltas([{path: 'navigation.racing.reverseStart', value: state.reverseStart}]);
+                processPosition(null);
+            }
+            publishLineList();
+            return complete(callback, 200, 'Set reverseStart: OK');
+        } catch (err) {
+            return complete(callback, 500, 'Set reverseStart: Failed ' + err);
         }
     }
 
@@ -771,7 +799,11 @@ module.exports = (app) => {
                 angle = 180 - (bearingToEnd - startLine.bearing);
             }
             angle = ((angle + 180) % 360 + 360) % 360 - 180;
-            const ocs = angle < 0;
+            // ocs = boat is on the course side (over the line early).
+            // In reverse-start mode the course is on the opposite side of the
+            // line, so the OCS/pre-start sides swap.
+            let ocs = angle < 0;
+            if (state.reverseStart) ocs = !ocs;
 
             // We define a start zone which includes a 45° wedge off each end of the line.
             // - If the boat is inside the start zone, distanceToLine = perpendicular to line (or extension).
@@ -991,6 +1023,13 @@ module.exports = (app) => {
             state.gpsFromCenter = fromCenter ? fromCenter.value : null;
             state.timeToStart = options.timer;
             state.startLine = getStartLine();
+
+            // Restore reverse-start mode across a plugin restart from the published value.
+            {
+                const reverse = app.getSelfPath('navigation.racing.reverseStart');
+                state.reverseStart = reverse && reverse.value === true;
+            }
+
             publishLineList();
 
             // Is the timer already started
@@ -1010,7 +1049,10 @@ module.exports = (app) => {
                 }
             }
 
-            sendDeltas([{path: 'navigation.racing.timeToStart', value: state.timeToStart}]);
+            sendDeltas([
+                {path: 'navigation.racing.timeToStart', value: state.timeToStart},
+                {path: 'navigation.racing.reverseStart', value: state.reverseStart === true}
+            ]);
 
             // Subscribe to position updates.
             app.subscriptionmanager.subscribe(
@@ -1180,6 +1222,7 @@ module.exports = (app) => {
 
             // register to API paths for this plugin
             app.registerPutHandler('vessels.self', 'navigation.racing.setStartLineName', setStartLineName);
+            app.registerPutHandler('vessels.self', 'navigation.racing.setReverseStart', setReverseStart);
             app.registerPutHandler('vessels.self', 'navigation.racing.setStartLine', setStartLine);
             app.registerPutHandler('vessels.self', 'navigation.racing.setStartTime', startTimeCommand);
         },

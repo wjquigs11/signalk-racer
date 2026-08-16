@@ -120,6 +120,11 @@
                                     let timer = document.getElementById('timeToStart');
                                     if (timer) timer.textContent = formatTimeToMMSS(value.value);
                                     break;
+                                case "navigation.racing.reverseStart": {
+                                    const cb = document.getElementById('reverseStart');
+                                    if (cb) cb.checked = value.value === true;
+                                    break;
+                                }
                                 case "navigation.racing.startTime": {
                                     if (!value.value) {
                                         document.getElementById('startTime').value = "HH:MM:SS";
@@ -226,6 +231,10 @@
                     }
                 }
 
+                // Reflect reverse-start (OCS) mode.
+                const reverseCb = document.getElementById('reverseStart');
+                if (reverseCb) reverseCb.checked = payload.reverseStart === true;
+
                 updateStatus('Loaded start lines: ' + payload.lines.length + ' lines');
             })
             .catch(err => {
@@ -266,6 +275,23 @@
                 console.error('Failed to set active line:', err);
                 updateStatus('Failed to set active line: ' + err.message);
             });
+    }
+
+    function setReverseStart(reverse) {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            updateStatus('WebSocket not connected.');
+            return;
+        }
+        socket.send(JSON.stringify({
+            context: 'vessels.self',
+            put: {
+                path: 'navigation.racing.setReverseStart',
+                value: { reverse: !!reverse }
+            }
+        }));
+        updateStatus(reverse
+            ? 'Reverse (OCS) start enabled'
+            : 'Reverse (OCS) start disabled');
     }
 
     // connect WS and load lines once the page is running
@@ -380,6 +406,14 @@
 <div style="margin-top: 1em;">
     <label for="startLineSelect">Start line:</label>
     <select id="startLineSelect" onchange="setStartLineName(this.value)"></select>
+</div>
+
+<!-- Reverse (OCS) start toggle -->
+<div>
+    <label for="reverseStart">
+        <input type="checkbox" id="reverseStart" onchange="setReverseStart(this.checked)">
+        Reverse (OCS) Start
+    </label>
 </div>
 
 <!-- Start Time Row -->

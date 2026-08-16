@@ -27,6 +27,7 @@ This plugin calculates and publishes the following Signal K paths:
 | `navigation.racing.`<br/>`timeToLine`           | Period of time to sail to the line at best VMG         | `s`                    |     |
 | `navigation.racing.`<br/>`timeToBurn`           | Period of time delay before sailing to the at best VMG | `s`                    |     |
 | `navigation.racing.`<br/>`startTime`            | The start time as an ISO timestamp                     | `rfc3339`              |     |
+| `navigation.racing.`<br/>`reverseStart`         | Whether reverse-start (OCS) mode is active             | `boolean`              |     |
 
 These values can be displayed in KIP widgets, Freeboard-SK, or other Signal K clients.  
 There are dedicated widgets for the start timer and line adjustment since 3.5.0 of KIP 
@@ -151,6 +152,25 @@ Used to **start**, **sync**, **reset**, or **set a fixed start time**.
   "startTime": "2025-06-18T04:15:00Z"
 }
 ```
+---
+
+### `navigation.racing.setReverseStart`
+
+Used to enable or disable **reverse-start (OCS) mode**. When enabled, the start is
+calculated the "wrong way": the OCS (course) and pre-start sides of the line are
+swapped. This flips the sign of `navigation.racing.distanceStartline` and controls
+whether `navigation.racing.timeToBurn` is calculated. The current state is published
+on the boolean path `navigation.racing.reverseStart`.
+
+#### Payload:
+```
+{
+  "reverse": true | false
+}
+```
+
+- `reverse`: `true` to calculate the start in reverse, `false` for normal.
+
 ---
 
 ## 🧩 KIP Widgets
